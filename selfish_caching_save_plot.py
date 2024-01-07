@@ -2,9 +2,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
-output_folder = "Experiment_results"
-if not os.path.exists(f"{output_folder}\\Plots"):
-    os.makedirs(f"{output_folder}\\Plots")
+if not os.path.exists(f"Experiment_results\\Plots"):
+    os.makedirs(f"Experiment_results\\Plots")
 
 
 exp_network_sizes = [10, 15, 25, 50]
@@ -15,8 +14,8 @@ for network_size in exp_network_sizes:
 
         path = f"experiment_results_{network_size}_{network_probability}"
 
-        if os.path.exists(f"{output_folder}\\Results"):
-            file_path = f"{output_folder}\\Results\\{path}.txt"
+        if os.path.exists(f"Experiment_results\\Results"):
+            file_path = f"Experiment_results\\Results\\{path}.txt"
             
         try:
             df = pd.read_csv(file_path)
@@ -39,4 +38,4 @@ for network_size in exp_network_sizes:
         else:
             plt.title(f"Koszt zoptymalizowanej sieci - {network_size} węzłów, prawdopodobieństwo 25%")
         plt.legend()
-        plt.savefig(f"{output_folder}\\Plots\\{path}_plot.png")
+        plt.savefig(f"Experiment_results\\Plots\\{path}_plot.png")

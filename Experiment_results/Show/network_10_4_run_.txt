@@ -1,0 +1,17 @@
+Initial strategy: [0 1 0 1 1 0 1 0 1 0]
+Initial cost of network: 67
+
+Strategy for iteration 1: [0 0 0 1 1 0 1 0 1 0]
+Cost of network for iteration 1: 64
+
+Strategy for iteration 2: [0 0 0 1 1 0 1 0 1 0]
+Cost of network for iteration 2: 58
+
+Strategy for iteration 3: [0 0 0 0 1 0 1 0 1 0]
+Cost of network for iteration 3: 53
+
+Strategy for iteration 4: [0 0 0 0 1 0 1 0 1 0]
+Cost of network for iteration 4: 53
+
+Final strategy: [0 0 0 0 1 0 1 0 1 0]
+Final cost of network: 53

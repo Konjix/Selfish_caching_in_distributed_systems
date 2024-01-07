@@ -20,6 +20,16 @@ class Network:
                     self.matrix[row, col, 0] = 0
                     self.matrix[col, row, 0] = 0
     
+    @classmethod
+    def from_adjacency_matrix(cls, adjacency_matrix):
+        size = len(adjacency_matrix)
+        network = cls(size)
+        for i in range(size):
+            for j in range(i + 1, size):
+                network.matrix[i, j, 0] = adjacency_matrix[i, j]
+                network.matrix[j, i, 0] = adjacency_matrix[i, j]
+        return network
+    
     def present_network(self, print_neighbors):
         for node_id in range(self.size):
             if (print_neighbors):
@@ -139,53 +149,20 @@ def neighbor_min_cost(network, current_strategy, current_node):
     return cost_min, download_from
 
 
-def selfish_caching_iterations(network, strategy, show):
+def selfish_caching_iterations(network, strategy, file=None):
     n = 1
     while True:
         stop, network, strategy = update_strategy(network, strategy)
-        if show:
-            print (f"\nStrategy and costs for iteration {n}: {strategy}")
-            network.present_network(False)
-            print()
+        if file:
+            with open(file, "a") as f:
+                f.write(f"Strategy for iteration {n}: {strategy}\n")
+                f.write(f"Cost of network for iteration {n}: {network.network_cost()}\n\n")
         n+=1
         if stop:
             return network, strategy, n
 
 
 '''
-# Test
-network_size = 10
-
-strategy = generate_initial_strategy_array_with_zeros(network_size, 0)
-network = Network(network_size)
-network.populate_random_values(1)
-network.initial_network_costs(strategy)
-
-print(f"Initial strategy: {strategy}")
-network.present_network(True)
-
-network, strategy, iterations = selfish_caching_iterations(network, strategy, True)
-    
-print(f"Final strategy: {strategy}")
-network.present_network(False)
-'''
-'''
-# Proof of concept
-test_network_size = 10
-test_network = Network(test_network_size)
-test_network.populate_random_values(2)
-test_network.present_network(True)
-for i in range(test_network_size):
-    # test_strategy = generate_initial_strategy_array_with_zeros(test_network_size, i)
-    test_strategy = generate_initial_strategy_array_random(test_network_size, 10)
-    print(f"Initial strategy: {test_strategy}")
-    test_network.initial_network_costs(test_strategy)
-    test_network, test_strategy, iterations = selfish_caching_iterations(test_network, test_strategy, False)
-    print(f"Number of iterations to balance network for object placed at node {i + 1}: {iterations}")
-    print(f"Final strategy: {test_strategy}")
-    print(f"Network cost: {test_network.network_cost()}")
-'''
-
 # Experiment
 output_folder = "Experiment_results"
 if not os.path.exists(output_folder):
@@ -195,7 +172,6 @@ for subfolder in subfolders:
     subfolder_path = os.path.join(output_folder, subfolder)
     if not os.path.exists(subfolder_path):
         os.makedirs(subfolder_path)
-
 
 
 exp_network_sizes = [10, 15, 25, 50]
@@ -213,8 +189,41 @@ for network_size in exp_network_sizes:
             for network_objects in exp_network_objects:
                 exp_strategy = generate_initial_strategy_array_random(network_size, network_objects)
                 exp_network.initial_network_costs(exp_strategy)
-                exp_network, exp_strategy, exp_iterations = selfish_caching_iterations(exp_network, exp_strategy, False)
+                exp_network, exp_strategy, exp_iterations = selfish_caching_iterations(exp_network, exp_strategy)
                 exp_network_results.append([network_objects, exp_network.network_cost(), exp_iterations])
         exp_network_results_str = np.array(exp_network_results, dtype=str)
         np.savetxt(f"{output_folder}\\Results\\experiment_results_{network_size}_{network_probabilities}.txt",
                     exp_network_results, fmt="%s", delimiter=",")
+'''
+
+# Show run
+show_network_size = 10
+show_network_probability = 4
+show_network_objects = 5
+
+path = f"network_{show_network_size}_{show_network_probability}"
+
+if not os.path.exists(f"Experiment_results\\Show"):
+    os.makedirs(f"Experiment_results\\Show")
+output_file = f"Experiment_results\\Show\\{path}_run_.txt"
+
+if os.path.exists(f"Experiment_results\\Networks"):
+    file_path = f"Experiment_results\\Networks\\{path}.txt"
+try:
+    adjacency_matrix = np.loadtxt(file_path, delimiter=",", dtype=int)
+except Exception as e:
+    print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
+
+show_network = Network.from_adjacency_matrix(adjacency_matrix)
+show_strategy = generate_initial_strategy_array_random(show_network_size, show_network_objects)
+show_network.initial_network_costs(show_strategy)
+
+with open(output_file, 'w') as f:
+    f.write(f"Initial strategy: {show_strategy}\n")
+    f.write(f"Initial cost of network: {show_network.network_cost()}\n\n")
+
+show_network, show_strategy, show_iterations = selfish_caching_iterations(show_network, show_strategy, output_file)
+
+with open(output_file, 'a') as f:
+    f.write(f"Final strategy: {show_strategy}\n")
+    f.write(f"Final cost of network: {show_network.network_cost()}")
