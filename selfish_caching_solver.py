@@ -47,7 +47,8 @@ for i in range(n):
 m.optimize()
 
 # Output results
-#solution_x = {i: x[i].X for i in range(n)}
 print("Optimized decision for x_i:")
+solution_x = []
 for v in m.getVars():
-    print(v)
+    solution_x.append(abs(int(v.x)))
+print(solution_x)

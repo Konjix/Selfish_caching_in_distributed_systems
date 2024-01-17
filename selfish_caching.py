@@ -45,27 +45,7 @@ class Network:
                 self.matrix[node_id, node_id, 1] = node_id
             else:
                 self.matrix[node_id, node_id, 0] = -1
-                self.matrix[node_id, node_id, 1] = -1
-                
-        # Find 1st level of neighbours
-        for node_id in range(self.size):
-            if(initial_strategy[node_id] == 0):
-                for neighbor_id in range(self.size):
-                    if(initial_strategy[neighbor_id] == 1 and self.matrix[node_id, neighbor_id, 0] != 0
-                    and neighbor_id != node_id):
-                        self.matrix[node_id, node_id, 0] = self.matrix[node_id, neighbor_id, 0]
-                        self.matrix[node_id, node_id, 1] = neighbor_id
-        # Next levels of neighbours
-        continue_filling = True
-        while continue_filling:
-            continue_filling = False
-            for node_id in range(self.size):
-                if(initial_strategy[node_id] == 0 and self.matrix[node_id, node_id, 0] == -1):
-                    for neighbor_id in range(self.size):
-                        if(self.matrix[node_id, neighbor_id, 0] != 0 and neighbor_id != node_id):
-                            self.matrix[node_id, node_id, 0] = self.matrix[node_id, neighbor_id, 0] + self.matrix[neighbor_id, neighbor_id, 0]
-                            self.matrix[node_id, node_id, 1] = self.matrix[node_id, neighbor_id, 1]
-                            continue_filling = True
+                self.matrix[node_id, node_id, 1] = -1        
     
     def network_cost(self):
         cost = 0
@@ -78,17 +58,10 @@ class Network:
         matrix_2d = self.matrix[:, :, 0].reshape(shape_3d[0], shape_3d[1])
         np.savetxt(file_path, matrix_2d, fmt="%d", delimiter=", ")
 
-
-def generate_initial_strategy_array(size):
-    strategy_array = np.random.choice([0, 1], size=size)
-    
-    return strategy_array
-
-
-def generate_initial_strategy_array_with_zeros(size, place):
+def generate_initial_strategy_array_with_ones(size):
     strategy_array = np.zeros(size)
-    strategy_array[place] = 1
-    strategy_array[place - 1] = 1
+    for i in range(size):
+        strategy_array[i] = 1
 
     return strategy_array
 
@@ -110,43 +83,31 @@ def update_strategy(network, current_strategy):
     
     for current_node in range(num_nodes):
         cost_1 = num_nodes
-        cost_2, cost_2_node = neighbor_min_cost(network, current_strategy, current_node)
+        cost_2 = neighbor_min_cost(network, current_strategy, current_node)
+        print(cost_2)
         cost_min = min(cost_1, cost_2)
         if new_network.matrix[current_node, current_node, 0] > cost_min:
+            print(f'found better, current_node {current_node}')
+            new_network.matrix[current_node, current_node, 0] = cost_min;
             if cost_min == cost_1:
-                new_network.matrix[current_node, current_node, 0] = cost_min;
+                
                 new_strategy[current_node] = 1
-                new_network.matrix[current_node, current_node, 1] = current_node;
-                return False, new_network, new_strategy
-            elif current_node != new_network.matrix[cost_2_node, cost_2_node, 1]:
-                new_network.matrix[current_node, current_node, 0] = cost_min;
+            else:
                 new_strategy[current_node] = 0
-                new_network.matrix[current_node, current_node, 1] = cost_2_node;
-                if current_strategy[current_node] == 1:
-                    for check_back_node in range(num_nodes):
-                        if new_network.matrix[check_back_node, check_back_node, 1] == current_node and check_back_node != current_node:                            
-                            check_back_cost, check_back_node_from = neighbor_min_cost(new_network, new_strategy, check_back_node)
-                            new_network.matrix[check_back_node, check_back_node, 0] = check_back_cost
-                            new_network.matrix[check_back_node, check_back_node, 1] = check_back_node_from
-                return False, new_network, new_strategy
-            
+            return False, new_network, new_strategy
     return True, network, current_strategy
 
 
 def neighbor_min_cost(network, current_strategy, current_node):
     num_nodes = len(current_strategy)
     cost_min = sys.maxsize
-    download_from = num_nodes + 1
     
     for neighbor_id in range(num_nodes):
-        if(network.matrix[current_node, neighbor_id, 0] != 0):
+        if(network.matrix[current_node, neighbor_id, 0] != 0 and current_strategy[neighbor_id] == 1 and current_node != neighbor_id):
             download_cost = network.matrix[current_node, neighbor_id, 0]
-            if current_strategy[neighbor_id] == 0:
-                download_cost += network.matrix[neighbor_id, neighbor_id, 0]
             if  download_cost < cost_min:
                 cost_min = download_cost
-                download_from = network.matrix[neighbor_id, neighbor_id, 1]     
-    return cost_min, download_from
+    return cost_min
 
 
 def selfish_caching_iterations(network, strategy, file=None):
@@ -162,68 +123,75 @@ def selfish_caching_iterations(network, strategy, file=None):
             return network, strategy, n
 
 
-'''
 # Experiment
-output_folder = "Experiment_results"
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-subfolders = ["Networks", "Results"]
-for subfolder in subfolders:
-    subfolder_path = os.path.join(output_folder, subfolder)
-    if not os.path.exists(subfolder_path):
-        os.makedirs(subfolder_path)
+def experiment():
+    output_folder = "Experiment_results"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    subfolders = ["Networks", "Results"]
+    for subfolder in subfolders:
+        subfolder_path = os.path.join(output_folder, subfolder)
+        if not os.path.exists(subfolder_path):
+            os.makedirs(subfolder_path)
 
 
-exp_network_sizes = [10, 15, 25, 50]
-exp_network_probabilities = [2, 3, 4] # 50%, 33%, 25%
-exp_network_objects = [2, 5, 10]
+    exp_network_sizes = [10, 15, 25, 50]
+    exp_network_probabilities = [2, 3, 4] # 50%, 33%, 25%
+    exp_network_objects = [2, 5, 10]
 
-for network_size in exp_network_sizes:
-    for network_probabilities in exp_network_probabilities:
-        exp_network = Network(network_size)
-        exp_network.populate_random_values(network_probabilities)
-        exp_network.save_to_file(f"{output_folder}\\Networks\\network_{network_size}_{network_probabilities}.txt")
-        exp_network_results = []
-        exp_network_results.append(["Objects", "Cost", "Iterations"])
-        for i in range(network_size):
-            for network_objects in exp_network_objects:
-                exp_strategy = generate_initial_strategy_array_random(network_size, network_objects)
-                exp_network.initial_network_costs(exp_strategy)
-                exp_network, exp_strategy, exp_iterations = selfish_caching_iterations(exp_network, exp_strategy)
-                exp_network_results.append([network_objects, exp_network.network_cost(), exp_iterations])
-        exp_network_results_str = np.array(exp_network_results, dtype=str)
-        np.savetxt(f"{output_folder}\\Results\\experiment_results_{network_size}_{network_probabilities}.txt",
-                    exp_network_results, fmt="%s", delimiter=",")
-'''
+    for network_size in exp_network_sizes:
+        for network_probabilities in exp_network_probabilities:
+            exp_network = Network(network_size)
+            exp_network.populate_random_values(network_probabilities)
+            exp_network.save_to_file(f"{output_folder}\\Networks\\network_{network_size}_{network_probabilities}.txt")
+            exp_network_results = []
+            exp_network_results.append(["Objects", "Cost", "Iterations"])
+            for i in range(network_size):
+                for network_objects in exp_network_objects:
+                    exp_strategy = generate_initial_strategy_array_random(network_size, network_objects)
+                    exp_network.initial_network_costs(exp_strategy)
+                    exp_network, exp_strategy, exp_iterations = selfish_caching_iterations(exp_network, exp_strategy)
+                    exp_network_results.append([network_objects, exp_network.network_cost(), exp_iterations])
+            exp_network_results_str = np.array(exp_network_results, dtype=str)
+            np.savetxt(f"{output_folder}\\Results\\experiment_results_{network_size}_{network_probabilities}.txt",
+                        exp_network_results, fmt="%s", delimiter=",")
+
 
 # Show run
-show_network_size = 10
-show_network_probability = 4
-show_network_objects = 5
+def show_run():
+    show_network_size = 10
+    show_network_probability = 2
+    show_network_objects = 5
 
-path = f"network_{show_network_size}_{show_network_probability}"
+    path = f"network_{show_network_size}_{show_network_probability}"
 
-if not os.path.exists(f"Experiment_results\\Show"):
-    os.makedirs(f"Experiment_results\\Show")
-output_file = f"Experiment_results\\Show\\{path}_run_.txt"
+    if not os.path.exists(f"Experiment_results\\Show"):
+        os.makedirs(f"Experiment_results\\Show")
+    output_file = f"Experiment_results\\Show\\{path}_run_.txt"
 
-if os.path.exists(f"Experiment_results\\Networks"):
-    file_path = f"Experiment_results\\Networks\\{path}.txt"
-try:
-    adjacency_matrix = np.loadtxt(file_path, delimiter=",", dtype=int)
-except Exception as e:
-    print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
+    if os.path.exists(f"Experiment_results\\Networks"):
+        file_path = f"Experiment_results\\Networks\\{path}.txt"
+    try:
+        adjacency_matrix = np.loadtxt(file_path, delimiter=",", dtype=int)
+    except Exception as e:
+        print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
 
-show_network = Network.from_adjacency_matrix(adjacency_matrix)
-show_strategy = generate_initial_strategy_array_random(show_network_size, show_network_objects)
-show_network.initial_network_costs(show_strategy)
+    show_network = Network.from_adjacency_matrix(adjacency_matrix)
+    #show_strategy = generate_initial_strategy_array_random(show_network_size, show_network_objects)
+    #show_strategy = generate_initial_strategy_array_with_ones(show_network_size)
+    show_strategy = [0, 1, 0, 0, 0, 0, 0, 0, 0, 1]
+    show_network.initial_network_costs(show_strategy)
 
-with open(output_file, 'w') as f:
-    f.write(f"Initial strategy: {show_strategy}\n")
-    f.write(f"Initial cost of network: {show_network.network_cost()}\n\n")
+    with open(output_file, 'w') as f:
+        f.write(f"Initial strategy: {show_strategy}\n")
+        f.write(f"Initial cost of network: {show_network.network_cost()}\n\n")
 
-show_network, show_strategy, show_iterations = selfish_caching_iterations(show_network, show_strategy, output_file)
+    show_network, show_strategy, show_iterations = selfish_caching_iterations(show_network, show_strategy, output_file)
 
-with open(output_file, 'a') as f:
-    f.write(f"Final strategy: {show_strategy}\n")
-    f.write(f"Final cost of network: {show_network.network_cost()}")
+    with open(output_file, 'a') as f:
+        f.write(f"Final strategy: {show_strategy}\n")
+        f.write(f"Final cost of network: {show_network.network_cost()}")
+
+
+if __name__ == '__main__':
+    show_run()
