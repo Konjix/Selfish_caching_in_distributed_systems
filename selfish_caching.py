@@ -83,31 +83,36 @@ def update_strategy(network, current_strategy):
     
     for current_node in range(num_nodes):
         cost_1 = num_nodes
-        cost_2 = neighbor_min_cost(network, current_strategy, current_node)
-        print(cost_2)
+        cost_2, cost_2_neighbour = neighbor_min_cost(network, current_strategy, current_node)
+        # print(cost_2)
         cost_min = min(cost_1, cost_2)
         if new_network.matrix[current_node, current_node, 0] > cost_min:
-            print(f'found better, current_node {current_node}')
-            new_network.matrix[current_node, current_node, 0] = cost_min;
+            # print(f'found better, current_node {current_node}')
             if cost_min == cost_1:
-                
+                new_network.matrix[current_node, current_node, 0] = cost_min
                 new_strategy[current_node] = 1
-            else:
+                return False, new_network, new_strategy
+            elif new_network.matrix[current_node, current_node, 1] != 1:
+                new_network.matrix[current_node, current_node, 0] = cost_min
+                new_network.matrix[cost_2_neighbour, cost_2_neighbour, 1] = 1
                 new_strategy[current_node] = 0
-            return False, new_network, new_strategy
+                return False, new_network, new_strategy
     return True, network, current_strategy
 
 
 def neighbor_min_cost(network, current_strategy, current_node):
     num_nodes = len(current_strategy)
     cost_min = sys.maxsize
+    neighbor_id_download = -1
     
     for neighbor_id in range(num_nodes):
         if(network.matrix[current_node, neighbor_id, 0] != 0 and current_strategy[neighbor_id] == 1 and current_node != neighbor_id):
             download_cost = network.matrix[current_node, neighbor_id, 0]
+            print(current_node, neighbor_id, download_cost)
             if  download_cost < cost_min:
                 cost_min = download_cost
-    return cost_min
+                neighbor_id_download = neighbor_id
+    return cost_min, neighbor_id_download
 
 
 def selfish_caching_iterations(network, strategy, file=None):
@@ -179,7 +184,7 @@ def show_run():
     show_network = Network.from_adjacency_matrix(adjacency_matrix)
     #show_strategy = generate_initial_strategy_array_random(show_network_size, show_network_objects)
     #show_strategy = generate_initial_strategy_array_with_ones(show_network_size)
-    show_strategy = [0, 1, 0, 0, 0, 0, 0, 0, 0, 1]
+    show_strategy = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     show_network.initial_network_costs(show_strategy)
 
     with open(output_file, 'w') as f:
