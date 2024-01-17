@@ -42,10 +42,19 @@ class Network:
         for node_id in range(self.size):
             if initial_strategy[node_id] == 1:
                 self.matrix[node_id, node_id, 0] = self.size
-                self.matrix[node_id, node_id, 1] = node_id
             else:
-                self.matrix[node_id, node_id, 0] = -1
-                self.matrix[node_id, node_id, 1] = -1        
+                for node_id in range(self.size):
+                    download_neighbor_id = node_id
+                    cost = sys.maxsize
+                    for neighbor_id in range(self.size):
+                        if initial_strategy[neighbor_id] == 1:
+                            if self.matrix[node_id, neighbor_id, 0] > 0:
+                                if cost > self.matrix[node_id, neighbor_id, 0]:
+                                    cost = self.matrix[node_id, neighbor_id, 0]
+                                    download_neighbor_id = neighbor_id
+                    print(cost)
+                    self.matrix[node_id, node_id, 0] = cost
+                    self.matrix[download_neighbor_id, download_neighbor_id] = 1
     
     def network_cost(self):
         cost = 0
@@ -84,10 +93,8 @@ def update_strategy(network, current_strategy):
     for current_node in range(num_nodes):
         cost_1 = num_nodes
         cost_2, cost_2_neighbour = neighbor_min_cost(network, current_strategy, current_node)
-        # print(cost_2)
         cost_min = min(cost_1, cost_2)
         if new_network.matrix[current_node, current_node, 0] > cost_min:
-            # print(f'found better, current_node {current_node}')
             if cost_min == cost_1:
                 new_network.matrix[current_node, current_node, 0] = cost_min
                 new_strategy[current_node] = 1
@@ -108,7 +115,6 @@ def neighbor_min_cost(network, current_strategy, current_node):
     for neighbor_id in range(num_nodes):
         if(network.matrix[current_node, neighbor_id, 0] != 0 and current_strategy[neighbor_id] == 1 and current_node != neighbor_id):
             download_cost = network.matrix[current_node, neighbor_id, 0]
-            print(current_node, neighbor_id, download_cost)
             if  download_cost < cost_min:
                 cost_min = download_cost
                 neighbor_id_download = neighbor_id
@@ -151,9 +157,10 @@ def experiment():
             exp_network.save_to_file(f"{output_folder}\\Networks\\network_{network_size}_{network_probabilities}.txt")
             exp_network_results = []
             exp_network_results.append(["Objects", "Cost", "Iterations"])
-            for i in range(network_size):
+            for i in range(10):
                 for network_objects in exp_network_objects:
-                    exp_strategy = generate_initial_strategy_array_random(network_size, network_objects)
+                    #exp_strategy = generate_initial_strategy_array_random(network_size, network_objects)
+                    exp_strategy = generate_initial_strategy_array_with_ones(network_size)
                     exp_network.initial_network_costs(exp_strategy)
                     exp_network, exp_strategy, exp_iterations = selfish_caching_iterations(exp_network, exp_strategy)
                     exp_network_results.append([network_objects, exp_network.network_cost(), exp_iterations])
@@ -183,8 +190,7 @@ def show_run():
 
     show_network = Network.from_adjacency_matrix(adjacency_matrix)
     #show_strategy = generate_initial_strategy_array_random(show_network_size, show_network_objects)
-    #show_strategy = generate_initial_strategy_array_with_ones(show_network_size)
-    show_strategy = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    show_strategy = generate_initial_strategy_array_with_ones(show_network_size)
     show_network.initial_network_costs(show_strategy)
 
     with open(output_file, 'w') as f:
@@ -197,6 +203,42 @@ def show_run():
         f.write(f"Final strategy: {show_strategy}\n")
         f.write(f"Final cost of network: {show_network.network_cost()}")
 
+def calculate_optimum():
+    exp_network_sizes = [10, 15, 25]
+    exp_network_probabilities = [2, 3, 4]
+
+    for network_size in exp_network_sizes:
+        for network_probability in exp_network_probabilities:
+
+            opt_strategy = []
+            adjacency_matrix = []
+
+            if os.path.exists(f"Experiment_results\\Optimum"):
+                opt_path = f"network_{network_size}_{network_probability}_optimum"
+                opt_file_path = f"Experiment_results\\Optimum\\{opt_path}.txt"
+            try:
+                opt_strategy = np.loadtxt(opt_file_path, delimiter=",", dtype=int)
+                print(opt_strategy)
+            except Exception as e:
+                print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
+
+            if os.path.exists(f"Experiment_results\\Networks"):
+                net_path = f"network_{network_size}_{network_probability}"
+                net_file_path = f"Experiment_results\\Networks\\{net_path}.txt"
+            try:
+                adjacency_matrix = np.loadtxt(net_file_path, delimiter=",", dtype=int)
+            except Exception as e:
+                print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
+
+            print(opt_strategy)
+            network = Network.from_adjacency_matrix(adjacency_matrix)
+            network.initial_network_costs(opt_strategy)
+
+            output_file = f"Experiment_results\\Optimum\\{opt_path}_value.txt"
+            with open(output_file, 'a') as f:
+                f.write(f"Optimum network cost: {network.network_cost()}\n")
 
 if __name__ == '__main__':
     show_run()
+    # experiment()
+    # calculate_optimum()
