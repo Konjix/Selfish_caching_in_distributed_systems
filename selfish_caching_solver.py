@@ -1,6 +1,5 @@
-from gurobipy import Model, GRB
+from gurobipy import Model, GRB, quicksum
 import os
-
 import numpy as np
 
 if not os.path.exists(f"Experiment_results\\Optimum"):
@@ -13,49 +12,54 @@ for network_size in exp_network_sizes:
     for network_probability in exp_network_probabilities:
 
         path = f"network_{network_size}_{network_probability}"
+        file_path = f"Experiment_results\\Networks\\{path}.txt"
+        
+        if os.path.exists(file_path):
+            try:
+                adjacency_matrix = np.loadtxt(file_path, delimiter=",", dtype=int)
+                print(adjacency_matrix)
+                m = Model('optimum_social')
 
-        if os.path.exists(f"Experiment_results\\Networks"):
-            file_path = f"Experiment_results\\Networks\\{path}.txt"
+                # Create variables
+                x = m.addVars(network_size, vtype=GRB.BINARY, name="strategy_vector")
             
-        try:
-            adjacency_matrix = np.loadtxt(file_path, delimiter=",", dtype=int)
-            m = Model('optimum_social')
-
-            # Create variables
-            x = m.addVars(network_size, vtype=GRB.BINARY, name="strategy_vector")  # Binary decision variable x_ij
-
-            # Since there's only one object and demand is always 1, we can simplify the constraints and objective function
-
-            # Objective function: Minimize the sum of distances for the chosen paths
-            m.setObjective(sum(network_size * x[i] + sum(adjacency_matrix[i][k] * (1 - x[i]) for k in range(network_size)) for i in range(network_size)),GRB.MINIMIZE)
-
-            '''
-            # Constraint 1: Each server must get the object from exactly one server
-            for i in range(n):
-                m.addConstr(sum(x[k] for k in range(n) if network[i][k] != 0) == 1)
-            '''
-            # Constraint 2: Simplified since we only deal with one object and y_ijk is 1 - x_ij
-            # If object is taken from server k by server i, it cannot be stored on server i
-            for i in range(network_size):
-                for k in range(network_size):
-                    if adjacency_matrix[i][k] != 0:
-                        m.addConstr(x[i] + x[k] <= 1)
-
-            # Constraint 3 and 4: Already defined by the variable types (binary)
-
-            # Optimize model
-            m.optimize()
-
-            # Output results
-            solution_x = []
-            for v in m.getVars():
-                solution_x.append(abs(int(v.x)))
-            optimum_file_path = f"Experiment_results\\Optimum\\{path}_optimum.txt"
-            with open(optimum_file_path, "w") as optimum_file:
+                # Objective function
+                obj = quicksum(network_size * x[i] for i in range(network_size))
                 for i in range(network_size):
-                    optimum_file.write(f"{solution_x[i]}")
-                    if i < network_size-1:
-                        optimum_file.write(",")
-        except Exception as e:
-            print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')
-            continue
+                    for k in range(network_size):
+                        if adjacency_matrix[i][k] != 0:
+                            obj += adjacency_matrix[i][k] * (1 - x[i])
+                m.setObjective(obj, GRB.MINIMIZE)
+                
+                # Constraints
+                for i in range(network_size):
+                    neighbours = [i]
+                    for j in range(network_size):
+                        if adjacency_matrix[i][j] > 0:
+                            neighbours.append(j)
+                    print(f"Neighbours for {i}: {neighbours}")
+                    sum = quicksum(x[k] for k in neighbours)
+                    print(sum)
+                    m.addConstr(sum >= 1)
+                
+                for i in range(network_size):
+                    for k in range(network_size):
+                        if adjacency_matrix[i][k] != 0:
+                            m.addConstr(x[i] + x[k] <= 1)
+                
+                # Optimize model
+                m.optimize()
+
+                # Output results
+                if m.status == GRB.OPTIMAL:
+                    # Output results
+                    solution_x = [abs(int(v.X)) for v in x.values()]
+                    optimum_file_path = f"Experiment_results\\Optimum\\{path}_optimum.txt"
+                    with open(optimum_file_path, "w") as optimum_file:
+                        optimum_file.write(",".join(map(str, solution_x)))
+                else:
+                    print(f"Model not solved to optimality. Status: {m.status}")
+
+                
+            except Exception as e:
+                print(f'Wystąpił błąd podczas wczytywania danych z pliku: {e}')

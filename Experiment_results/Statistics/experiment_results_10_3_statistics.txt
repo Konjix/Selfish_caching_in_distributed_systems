@@ -1,8 +1,0 @@
-Network size: 10
-Network probability: 33%
-Mean Cost: 66.70
-Variance Cost: 43.67
-Min Cost: 59.00
-Min object: 2
-Max Cost: 82.00
-Max object: 2
